@@ -1,7 +1,7 @@
 var CONFIG = {
     host: '127.0.0.1',
     user: 'root',
-    password: 'admin',
+    password: '',
     database: 'time_management',
     port:3306,
     remindtime:15,//提前几分钟提醒
