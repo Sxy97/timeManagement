@@ -43,9 +43,11 @@ router.post("/addProjectcontent",People.addProjectContent) //添加工作内容
 router.post("/back/PeopleCheck", People.PeopleCheck)  //管理员审核注册人员
 router.get("/back/PeopleOutLogin",People.backPeopleOutLogin) //后台管理员登出
 router.post("/back/PeopleLogin",People.backPeopleLogin) //后台管理员登录
-router.post("/back/PeopleAllocation", People.PeopleAllocation)  //为人员分配公司及项目
+//router.post("/back/PeopleAllocation", People.PeopleAllocation)  //为人员分配公司及项目
 router.post("/back/updatePeopleAllocation", People.updatePeopleAllocation)  //新增或更新人员分配公司及项目
 router.get("/back/PeopleList", People.PeopleList)  //后台人员列表
+router.get("/back/PeopleprojectDetails",People.PeopleprojectDetails)//为人员分配公司及项目的显示页
+router.get('/back/PeopleprojectDetailsBycid',People.PeopleprojectDetailsBycid)//分配时根据公司id查询项目
 router.get("/back/PeopleStateList", People.PeopleStateList)  //后台人员状态列表
 
 /******* 日程模块 *******/

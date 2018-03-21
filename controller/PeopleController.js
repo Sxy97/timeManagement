@@ -19,7 +19,7 @@ exports.PeopleRegister = async function (req, res) {
                 if (!regex.test(phone)) {
                     throw ("手机号格式错误")
                 } else {
-                    await db.query('insert into people (phone,name,password,registrationtime) values (?,?,?,?)', [phone, name, Md5.md5Password(onepassword),new Date()])
+                    await db.query('insert into people (phone,name,password,registrationtime) values (?,?,?,?)', [phone, name, Md5.md5Password(onepassword), new Date()])
                     writeJson(res, 0, '注册成功待审核')
                 }
             }
@@ -65,13 +65,13 @@ exports.PeopleLogin = async function (req, res) {
                         throw ("用户还没有被审核")
                     } else if (data[0].state == 2) {
                         throw ("管理员拒绝了你的审核")
-                    } else if(data[0].state ==1){
+                    } else if (data[0].state == 1) {
                         const token = Md5.md5Password(data[0].phone + new Date().getTime())
                         await db.query('update people set token=? where phone=?', [token, data[0].phone])
                         data[0].token = token
                         delete data[0].password
                         writeJson(res, 0, data[0])
-                    }else{
+                    } else {
                         throw ("账号状态异常")
                     }
                 } else {
@@ -107,9 +107,9 @@ exports.addProjectContent = async function (req, res) {
             const num = await db.query('select count(1) as num from peo_pro where proid=? and peoid=?', [proid, req.peoid])
             if (num[0].num <= 0) {
                 throw('没有权限')
-            }else {
+            } else {
                 const date = new Date()
-                const data=await db.query('insert into jobcontent (proid,content,addtime,peoid) values (?,?,?,?)', [proid, content, date, req.peoid])
+                const data = await db.query('insert into jobcontent (proid,content,addtime,peoid) values (?,?,?,?)', [proid, content, date, req.peoid])
                 writeJson(res, 0, "提交成功")
             }
 
@@ -141,7 +141,7 @@ exports.PeopleAllocation = async function (req, res) {
         const query = req.body
         const peoid = query.peoid || '' //人员id
         const comid = query.comid || ''//公司id
-        const pros = (query.pros== undefined) ? [] :JSON.parse(query.pros) || [] //项目组 [[proid,cid]]
+        const pros = (query.pros == undefined) ? [] : JSON.parse(query.pros) || [] //项目组 [[proid,cid]]
         // const pros = query.pros
         if (!peoid || !comid) {
             throw("参数错误")
@@ -187,19 +187,70 @@ exports.PeopleList = async function (req, res) {
     }
 }
 
+exports.PeopleprojectDetails = async function (req, res) {
+    try {
+        const peoid = req.query.peoid
+        if (!peoid) {
+            throw("参数错误")
+        } else {
+            const result = await db.query('select comid from peo_pro where peoid=?', [peoid])
+            if (result.length > 0) {
+                //已分配公司,默认显示第一
+                const coms = await db.query('select id,name from company', [])
+                //将已选公司放到首位
+                let c = coms[0]
+                for (let i = 0; i < coms.length; i++) {
+                    if (coms[i].id == result[0].comid) {
+                        coms[0] = coms[i]
+                        coms[i] = c
+                    }
+                }
+                const pros = await db.query('select p.*,a.proid as state from project as p left join (select proid from peo_pro where comid=? and peoid=?) as a on a.proid=p.id where p.cid=?', [result[0].comid, peoid, result[0].comid])
+                //如果state为null 或没传 state 就是没选
+                writeJson(res, 0, {coms: coms, pros: pros})
+            } else {
+                //未分配公司，默认显示第一个公司和公司下的全部项目列表
+                const coms = await db.query('select id,name from company')
+                const pros = await db.query('select * from project where cid=?', [coms[0].id])
+                writeJson(res, 0, {coms: coms, pros: pros})
+            }
+        }
+    }
+    catch (err) {
+        console.log(err)
+        writeJson(res, 1, err)
+    }
+}
+
+exports.PeopleprojectDetailsBycid = async function (req, res) {
+    try {
+        const peoid = req.query.peoid || ''
+        const cid = req.query.cid || ''
+        if(!peoid || !cid){
+            throw("参数错误")
+        }else{
+            const pros = await db.query('select p.*,a.proid as state from project as p left join (select proid from peo_pro where comid=? and peoid=?) as a on a.proid=p.id where p.cid=?', [cid, peoid, cid])
+            writeJson(res, 0, pros)
+        }
+    } catch (err) {
+        console.log(err)
+        writeJson(res, 1, err)
+    }
+}
+
 exports.updatePeopleAllocation = async function (req, res) {
     try {
         const query = req.body
         const peoid = query.peoid || '' //人员id
         const comid = query.comid || ''//公司id
-        const pros = (query.pros== undefined) ? [] :JSON.parse(query.pros) || [] //项目组 [[proid,cid]]
+        const pros = (query.pros == undefined) ? [] : JSON.parse(query.pros) || [] //项目组 [[proid,cid]]
         if (!peoid || !comid) {
             throw("参数错误")
         } else {
-            const num = await db.query('select count(1) as num from peo_pro where comid=?', [comid])
+            const num = await db.query('select count(1) as num from peo_pro where comid=? and peoid=?', [comid, peoid])
             if (num[0].num > 0) {
                 //更新
-                await db.query('delete from peo_pro where comid=?', [comid])
+                await db.query('delete from peo_pro where comid=? and peoid=?', [comid, peoid])
                 if (pros.length > 0) {
                     //插公司和项目
                     for (let i = 0; i < pros.length; i++) {
