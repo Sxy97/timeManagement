@@ -93,7 +93,7 @@ exports.projectContentByDay = async function (req, res) {
             } else {
                 const data = await db.query('select j.id,j.content,j.addtime,p.name from jobcontent as j,(select * from people) as p where p.id=j.peoid and proid=? and to_days(addtime) = to_days(?) Order By addtime desc', [proid, new Date(day)])
                 for (let i = 0; i < data.length; i++) {
-                    data[i].addtime = sd.format(new Date(data[i].addtime), 'YYYY-MM-DD hh:mm:ss')
+                    data[i].addtime = sd.format(new Date(data[i].addtime), 'YYYY-MM-DD HH:mm:ss')
                 }
                 writeJson(res, 0, data)
             }

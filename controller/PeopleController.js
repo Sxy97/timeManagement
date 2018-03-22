@@ -289,7 +289,7 @@ exports.PeopleStateList = async function (req, res) {
     try {
         let data = await db.query('select id,name,phone,state,registrationtime from people Order By registrationtime desc', [])
         for (let i = 0; i < data.length; i++) {
-            data[i].registrationtime = sd.format(new Date(data[i].registrationtime), 'YYYY-MM-DD hh:mm:ss')
+            data[i].registrationtime = sd.format(new Date(data[i].registrationtime), 'YYYY-MM-DD HH:mm:ss')
         }
         writeJson(res, 0, data)
     } catch (err) {

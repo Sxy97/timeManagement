@@ -6,6 +6,7 @@ var sd = require('silly-datetime');
 exports.addSchedule = async function (req, res) {
     try {
         const query = req.body
+        console.log(query)
         const content = query.content || ''
         const startime = query.startime || ''
         const closetime = query.closetime || ''
