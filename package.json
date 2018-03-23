@@ -18,6 +18,11 @@
     "morgan": "~1.9.0",
     "mysql": "^2.15.0",
     "serve-favicon": "~2.4.5",
-    "silly-datetime": "^0.1.2"
+    "silly-datetime": "^0.1.2",
+
+    "protobufjs": "^3.8.2",
+    "request": "^2.51.0",
+    "util": "^0.10.3",
+    "zlib": "^1.0.5"
   }
 }

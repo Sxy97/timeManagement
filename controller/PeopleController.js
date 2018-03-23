@@ -7,9 +7,11 @@ exports.PeopleRegister = async function (req, res) {
         const query = req.body
         const phone = query.phone || ''
         const name = query.name || ''
+        //const clientid=query.clientid || ''
+        const clientid=query.clientid ||'ec7fd6931de18072f4658cd432a0d075'
         let onepassword = query.onepassword || ''
         let twopassword = query.twopassword || ''
-        if (!phone || !onepassword || !twopassword || !name) {
+        if (!phone || !onepassword || !twopassword || !name || !clientid) {
             throw ("参数错误")
         } else {
             if (onepassword != twopassword) {
@@ -19,7 +21,7 @@ exports.PeopleRegister = async function (req, res) {
                 if (!regex.test(phone)) {
                     throw ("手机号格式错误")
                 } else {
-                    await db.query('insert into people (phone,name,password,registrationtime) values (?,?,?,?)', [phone, name, Md5.md5Password(onepassword), new Date()])
+                    await db.query('insert into people (phone,name,password,registrationtime,clientid) values (?,?,?,?,?)', [phone, name, Md5.md5Password(onepassword), new Date(),clientid])
                     writeJson(res, 0, '注册成功待审核')
                 }
             }
@@ -34,7 +36,6 @@ exports.PeopleCheck = async function (req, res) {
         const query = req.body
         const pid = query.pid || '' //人员id
         const state = query.state || '' //状态 1为通过，2为拒绝
-        console.log(query)
         if (!pid || !["1", "2"].includes(state)) {
             throw ("参数错误")
         } else {
@@ -52,7 +53,9 @@ exports.PeopleLogin = async function (req, res) {
         const query = req.body
         const phoneNumber = query.phoneNumber || ''
         const password = query.password || ''
-        if (!phoneNumber || !password) {
+        //const clientid=query.clientid || ''
+        const clientid=query.clientid ||'ec7fd6931de18072f4658cd432a0d075'
+        if (!phoneNumber || !password || !clientid) {
             throw ("参数错误")
         } else {
             let regex = new RegExp(/^[1][0-9]{10}$/)
@@ -67,7 +70,7 @@ exports.PeopleLogin = async function (req, res) {
                         throw ("管理员拒绝了你的审核")
                     } else if (data[0].state == 1) {
                         const token = Md5.md5Password(data[0].phone + new Date().getTime())
-                        await db.query('update people set token=? where phone=?', [token, data[0].phone])
+                        await db.query('update people set token=?,clientid=? where phone=?', [token,clientid,data[0].phone])
                         data[0].token = token
                         delete data[0].password
                         writeJson(res, 0, data[0])

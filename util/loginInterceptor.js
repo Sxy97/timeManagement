@@ -39,9 +39,10 @@ exports.interceptor = async function (req, res, next) {
                     return
                 }
             }
-            const num =await db.query('select id from people where phone =? and token =?',[phone,token])
+            const num =await db.query('select id,name from people where phone =? and token =?',[phone,token])
             if(num.length>0){
                 req.peoid=num[0].id
+                req.peopleName=num[0].name
                 next()
             }else{
                 writeJson(res, 1, "token错误")

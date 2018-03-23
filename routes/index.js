@@ -35,8 +35,8 @@ router.get("/privateProjectListByCid", Project.privateProjectListByCid)  //根�
 
 
 /******* 人员模块 *******/
-router.post("/PeopleLogin",People.PeopleLogin) //app登录
-router.post("/PeopleRegister", People.PeopleRegister)  //人员注册
+router.post("/PeopleLogin",People.PeopleLogin) //app登录 TODO clientid
+router.post("/PeopleRegister", People.PeopleRegister)  //人员注册 TODO clientid
 router.get("/PeopleOutLogin",People.PeopleOutLogin) //app登出
 router.post("/addProjectcontent",People.addProjectContent) //添加工作内容
 
@@ -51,7 +51,7 @@ router.get('/back/PeopleprojectDetailsBycid',People.PeopleprojectDetailsBycid)//
 router.get("/back/PeopleStateList", People.PeopleStateList)  //后台人员状态列表
 
 /******* 日程模块 *******/
-router.post("/addSchedule",Schedule.addSchedule)//添加日程 TODO(设置定时器) （TODO 推送）(时间段已选)
+router.post("/addSchedule",Schedule.addSchedule)//添加日程 TODO(设置定时器)
 router.post("/updateSchedule",Schedule.updateSchedule)//修改自己的日程 TODO(删除旧定时器设置新定时器)
 router.post("/delSchedule",Schedule.delSchedule)//删除自己的日程
 router.get('/ScheduleListByDay',Schedule.ScheduleListByDay)//查看某天自己的日程列表
@@ -59,10 +59,12 @@ router.get('/ScheduleById',Schedule.ScheduleById)//根据日程id 查看日程�
 router.get('/ProjectPeopleList',Schedule.ProjectPeopleList)//查看同项目下的人员列表
 router.post('/ScheduleShare',Schedule.ScheduleShare)//共享或修改日程给谁
 router.get('/ScheduleShareListByDay',Schedule.ScheduleShareListByDay)//查询某一天的共享日程
-router.post('/UpdateScheduleShare',Schedule.UpdateScheduleShare)//修改别人的日程 TODO （推送）
+router.post('/UpdateScheduleShare',Schedule.UpdateScheduleShare)//修改别人的日程
 router.get('/ScheduleRedDot',Schedule.ScheduleRedDot)//日程小红点
 router.get('/ScheduleHome',Schedule.ScheduleHome)//我的日程首页 共享日程小红点(显示当月)
 router.get('/ScheduleShareHome',Schedule.ScheduleShareHome)//共享日程首页（显示当月）
 
 
 module.exports = router;
+
+

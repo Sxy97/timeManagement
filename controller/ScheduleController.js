@@ -3,10 +3,11 @@ var writeJson = require("../util/writeJson")
 var dat = require("date-and-time")
 var TIME = require("../util/config");
 var sd = require('silly-datetime');
+var GeTui = require("./GeTuiController")
+
 exports.addSchedule = async function (req, res) {
     try {
         const query = req.body
-        console.log(query)
         const content = query.content || ''
         const startime = query.startime || ''
         const closetime = query.closetime || ''
@@ -17,29 +18,36 @@ exports.addSchedule = async function (req, res) {
             if (date.getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime() || date.getDate() > new Date(startime).getDate()) {
                 throw("时间参数错误")
             } else {
-                const remindtime = dat.addMinutes(new Date(startime), -TIME.remindtime)
-                const repetitiontime = TIME.repetitiontime
-                const data = await db.query('insert into schedule (peoid,content,addtime,remindtime,repetitiontime,startime,closetime) values (?,?,?,?,?,?,?)', [req.peoid, content, date, remindtime, repetitiontime, new Date(startime), new Date(closetime)])
-                const schid = data.insertId
-                const result = await db.query('select forid from relation where whoid=?', [req.peoid])
-                if (result.length > 0) {
-                    //插入消息表
-                    const a = []
-                    for (let i = 0; i < result.length; i++) {
-                        const b = []
-                        b.push(schid)
-                        b.push(result[i].forid)
-                        b.push(req.peoid)
-                        b.push(1)
-                        a.push(b)
+                const a = await db.query('select * from schedule where peoid=? and (startime >= ? AND startime <= ?) OR  (startime <= ? AND closetime >= ?) OR  (closetime >= ? AND closetime <= ?) ', [req.peoid,new Date(startime), new Date(closetime), new Date(startime), new Date(closetime),new Date(startime), new Date(closetime)])
+                if (a.length > 0) {
+                    throw ("时间已分配")
+                }else{
+                    const remindtime = dat.addMinutes(new Date(startime), -TIME.remindtime)
+                    const repetitiontime = TIME.repetitiontime
+                    const data = await db.query('insert into schedule (peoid,content,addtime,remindtime,repetitiontime,startime,closetime) values (?,?,?,?,?,?,?)', [req.peoid, content, date, remindtime, repetitiontime, new Date(startime), new Date(closetime)])
+                    const schid = data.insertId
+                    const result = await db.query('select a.clientid,b.forid from people as a right join (select forid from relation where whoid=?) as b on a.id=b.forid where a.state=1', [req.peoid])
+                    if (result.length > 0) {
+                        //插入消息表
+                        const a = []
+                        for (let i = 0; i < result.length; i++) {
+                            const b = []
+                            b.push(schid)
+                            b.push(result[i].forid)
+                            b.push(req.peoid)
+                            b.push(1)
+                            a.push(b)
+                        }
+                        await db.query('insert into news (schid,forid,whoid,type) values ?', [a])
+                        //推送
+                        for (let i = 0; i < result.length; i++) {
+                            GeTui.tuiSong("通知", `[${req.peopleName}]发表了${content}`, "测试", result[i].clientid)
+                        }
+                        writeJson(res, 0, '添加成功')
+                    } else {
+                        writeJson(res, 0, '添加成功')
                     }
-                    await db.query('insert into news (schid,forid,whoid,type) values ?', [a])
-                    //TODO 推送
-                    writeJson(res, 0, '添加成功')
-                } else {
-                    writeJson(res, 0, '添加成功')
                 }
-
             }
         }
     } catch (err) {
@@ -106,14 +114,14 @@ exports.ScheduleListByDay = async function (req, res) {
         if (!daytime) {
             throw('参数错误')
         } else {
-            const data = await db.query("select a.state,b.* from news as a right join (select * from schedule where peoid=? and to_days(addtime)=to_days(?)) as b on a.schid=b.id where  a.forid=? and a.type='0' or a.type is null", [req.peoid, new Date(daytime), req.peoid])
-            for(let i=0;i<data.length;i++){
-                data[i].startime=sd.format(new Date(data[i].startime), 'YYYY-MM-DD HH:mm:ss')
-                data[i].closetime=sd.format(new Date(data[i].closetime), 'YYYY-MM-DD HH:mm:ss')
+            const data = await db.query("select a.state,b.* from schedule as b left join (select * from news where  forid=? and type=0 and state=0) as a on a.schid=b.id where b.peoid=? and to_days(b.startime)=to_days(?) group by b.id order by b.startime desc", [req.peoid, req.peoid, new Date(daytime)])
+            for (let i = 0; i < data.length; i++) {
+                data[i].startime = sd.format(new Date(data[i].startime), 'YYYY-MM-DD HH:mm:ss')
+                data[i].closetime = sd.format(new Date(data[i].closetime), 'YYYY-MM-DD HH:mm:ss')
             }
             //如果state=0 是未读被人修改
             //将修改未读全部设置为已读
-            await db.query('update news as a,(select id from schedule where peoid=? and to_days(addtime)=to_days(?)) as b set a.state=1 where a.schid=b.id and a.state=0 and a.type=0 and a.forid=?', [req.peoid, new Date(daytime), req.peoid])
+            await db.query('update news as a,(select id from schedule where peoid=? and to_days(startime)=to_days(?)) as b set a.state=1 where a.schid=b.id and a.state=0 and a.type=0 and a.forid=?', [req.peoid, new Date(daytime), req.peoid])
             writeJson(res, 0, data)
         }
     } catch (err) {
@@ -145,7 +153,7 @@ exports.ProjectPeopleList = async function (req, res) {
             for (let i = 0; i < result.length; i++) {
                 proids.push(result[i].proid)
             }
-            const data = await db.query('select c.id as state,d.peoid,d.name from relation as c right join (select a.id as peoid,a.name from people as a,(select peoid from peo_pro where peoid !=? and proid in (?) group by peoid) as b  where a.id=b.peoid) as d on c.forid=d.peoid  where c.whoid=? or c.whoid is null', [req.peoid,proids,req.peoid])
+            const data = await db.query('select c.id as state,d.peoid,d.name from relation as c right join (select a.id as peoid,a.name from people as a,(select peoid from peo_pro where peoid !=? and proid in (?) group by peoid) as b  where a.id=b.peoid) as d on c.forid=d.peoid  where c.whoid=? or c.whoid is null', [req.peoid, proids, req.peoid])
 
             writeJson(res, 0, data)
         } else {
@@ -213,13 +221,13 @@ exports.ScheduleShareListByDay = async function (req, res) {
                 for (let i = 0; i < data.length; i++) {
                     whoids.push(data[i].whoid)
                 }
-                const result = await db.query('select a.name,b.* from people as a,(select * from schedule where  peoid in (?) and to_days(addtime)=to_days(?)) as b where a.id=b.peoid order by b.addtime desc', [whoids, new Date(day)])
-                for(let i=0;i<result.length;i++){
-                    result[i].startime=sd.format(new Date(result[i].startime), 'YYYY-MM-DD HH:mm:ss')
-                    result[i].closetime=sd.format(new Date(result[i].closetime), 'YYYY-MM-DD HH:mm:ss')
+                const result = await db.query('select a.name,b.* from people as a,(select * from schedule where  peoid in (?) and to_days(startime)=to_days(?)) as b where a.id=b.peoid order by b.startime desc', [whoids, new Date(day)])
+                for (let i = 0; i < result.length; i++) {
+                    result[i].startime = sd.format(new Date(result[i].startime), 'YYYY-MM-DD HH:mm:ss')
+                    result[i].closetime = sd.format(new Date(result[i].closetime), 'YYYY-MM-DD HH:mm:ss')
                 }
                 //将共享未读全部设置为已读
-                await db.query('update news as a left join (select * from schedule where peoid in(?) and to_days(addtime)=to_days(?)) as b on a.schid=b.id set state =1 where  a.forid=? and a.state=0 and a.type=1', [whoids, new Date(day), req.peoid])
+                await db.query('update news as a left join (select * from schedule where peoid in(?) and to_days(startime)=to_days(?)) as b on a.schid=b.id set state =1 where  a.forid=? and a.state=0 and a.type=1', [whoids, new Date(day), req.peoid])
                 writeJson(res, 0, result)
             } else {
                 writeJson(res, 0, [])
@@ -254,6 +262,9 @@ exports.UpdateScheduleShare = async function (req, res) {
                     if (data.affectedRows > 0) {
                         //插入到消息列表
                         await db.query('insert into news (schid,whoid,forid,type) values (?,?,?,?)', [schid, req.peoid, peoid, 0])
+                        //推送
+                        const result = await db.query('select clientid from people where id=?', [peoid])
+                        GeTui.tuiSong("通知", `${req.peopleName}修改了你的日程${content}`, "测试", result[0].clientid)
                         writeJson(res, 0, '修改成功')
                     } else {
                         throw("消息id和人员不匹配")
@@ -283,18 +294,18 @@ exports.ScheduleRedDot = async function (req, res) {
 }
 exports.ScheduleHome = async function (req, res) {
     try {
-        let datetime =req.query.datetime || ''
-        if(!datetime){
-            datetime=new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}`)
-        }else{
-            datetime=new Date(datetime)
+        let datetime = req.query.datetime || ''
+        if (!datetime) {
+            datetime = new Date(`${new Date().getFullYear()}-${new Date().getMonth() + 1}`)
+        } else {
+            datetime = new Date(datetime)
         }
-        const startTime = new Date(`${new Date(datetime).getFullYear()}-${new Date(datetime).getMonth()+1}`)
+        const startTime = new Date(`${new Date(datetime).getFullYear()}-${new Date(datetime).getMonth() + 1}`)
         const endTime = dat.addMonths(datetime, +1)
-        const data = await db.query('select addtime, sum(closetime-startime) as TimeX  from schedule where peoid = ? and to_days(addtime) between to_days(?) and to_days(?)  group by to_days(addtime)', [req.peoid, startTime, endTime])
+        const data = await db.query('select startime, sum(closetime-startime) as TimeX  from schedule where peoid = ? and to_days(startime) between to_days(?) and to_days(?)  group by to_days(startime)', [req.peoid, startTime, endTime])
         //根据时间查小红点
         for (let i = 0; i < data.length; i++) {
-            const nums = await db.query('select a.state from news as a inner join (select * from schedule where peoid=? and to_days(addtime)=to_days(?)) as b on a.schid=b.id where  a.forid=? and a.state=0 and a.type=0', [req.peoid, data[i].addtime, req.peoid])
+            const nums = await db.query('select a.state from news as a inner join (select * from schedule where peoid=? and to_days(startime)=to_days(?)) as b on a.schid=b.id where  a.forid=? and a.state=0 and a.type=0', [req.peoid, data[i].addtime, req.peoid])
             if (nums.length > 0) {
                 //有未读消息
                 data[i].state = true
@@ -309,7 +320,7 @@ exports.ScheduleHome = async function (req, res) {
             } else {
                 data[i].TimeX = 3
             }
-            data[i].addtime =sd.format(new Date(data[i].addtime), 'YYYY-MM-DD')
+            data[i].addtime = sd.format(new Date(data[i].startime), 'YYYY-MM-DD')
         }
         //查共享小红点
         const nums = await db.query('select count(1) as num from news where forid=? and state=0 and type=1', [req.peoid])
@@ -327,26 +338,26 @@ exports.ScheduleHome = async function (req, res) {
 
 exports.ScheduleShareHome = async function (req, res) {
     try {
-        let datetime =req.query.datetime || ''
-        if(!datetime){
-            datetime=new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}`)
-        }else{
-            datetime=new Date(datetime)
+        let datetime = req.query.datetime || ''
+        if (!datetime) {
+            datetime = new Date(`${new Date().getFullYear()}-${new Date().getMonth() + 1}`)
+        } else {
+            datetime = new Date(datetime)
         }
         const startTime = datetime
         const endTime = dat.addMonths(datetime, +1)
-        const data=await db.query('select whoid from relation where forid=?',[req.peoid])
-        if(data.length>0){
-            const whoids=[]
-            for(let i=0;i<data.length;i++){
+        const data = await db.query('select whoid from relation where forid=?', [req.peoid])
+        if (data.length > 0) {
+            const whoids = []
+            for (let i = 0; i < data.length; i++) {
                 whoids.push(data[i].whoid)
             }
-           const result=await db.query('select b.addtime from news as a inner join (select id,addtime from schedule where  peoid in (?) and to_days(addtime) between to_days(?) and to_days(?)) as b on a.schid=b.id where a.state=0 and a.type=1 and a.forid=? group by to_days(b.addtime)',[whoids,startTime,endTime,req.peoid])
-            for(let i=0;i<result.length;i++){
-                result[i].addtime=sd.format(new Date(result[i].addtime), 'YYYY-MM-DD')
+            const result = await db.query('select b.startime from news as a inner join (select id,startime from schedule where  peoid in (?) and to_days(startime) between to_days(?) and to_days(?)) as b on a.schid=b.id where a.state=0 and a.type=1 and a.forid=? group by to_days(b.startime)', [whoids, startTime, endTime, req.peoid])
+            for (let i = 0; i < result.length; i++) {
+                result[i].startime = sd.format(new Date(result[i].startime), 'YYYY-MM-DD')
             }
             writeJson(res, 0, result)
-        }else{
+        } else {
             throw ('还木有银跟你共享，快去结伴吧')
         }
     } catch (err) {
@@ -354,5 +365,6 @@ exports.ScheduleShareHome = async function (req, res) {
         writeJson(res, 1, err)
     }
 }
+
 
 
