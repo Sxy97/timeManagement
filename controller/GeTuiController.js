@@ -70,3 +70,4 @@ function TransmissionTemplateDemo(title,content,payload) {
     //template.setApnInfo(payload);
     return template;
 }
+

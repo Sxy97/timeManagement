@@ -15,7 +15,7 @@ exports.addSchedule = async function (req, res) {
             throw("参数错误")
         } else {
             const date = new Date()
-            if (date.getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime() || date.getDate() > new Date(startime).getDate()) {
+            if (date.getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime()) {
                 throw("时间参数错误")
             } else {
                 const a = await db.query('select * from schedule where peoid=? and (startime >= ? AND startime <= ?) OR  (startime <= ? AND closetime >= ?) OR  (closetime >= ? AND closetime <= ?) ', [req.peoid,new Date(startime), new Date(closetime), new Date(startime), new Date(closetime),new Date(startime), new Date(closetime)])
@@ -41,7 +41,7 @@ exports.addSchedule = async function (req, res) {
                         await db.query('insert into news (schid,forid,whoid,type) values ?', [a])
                         //推送
                         for (let i = 0; i < result.length; i++) {
-                            GeTui.tuiSong("通知", `[${req.peopleName}]发表了${content}`, "测试", result[i].clientid)
+                            GeTui.tuiSong("通知", `${req.peopleName}发表了${content}`, "测试", result[i].clientid)
                         }
                         writeJson(res, 0, '添加成功')
                     } else {
@@ -67,7 +67,7 @@ exports.updateSchedule = async function (req, res) {
         if (!schid || !content || !startime || !closetime || !addtime) {
             throw("参数错误")
         } else {
-            if (new Date(addtime).getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime() || new Date(addtime).getDate() > new Date(startime).getDate()) {
+            if (new Date(addtime).getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime()) {
                 throw("时间参数错误")
             } else {
                 const num = await db.query('select count(1) as num from schedule where id=? and peoid=?', [schid, req.peoid])
@@ -365,6 +365,3 @@ exports.ScheduleShareHome = async function (req, res) {
         writeJson(res, 1, err)
     }
 }
-
-
-
