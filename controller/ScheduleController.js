@@ -18,7 +18,7 @@ exports.addSchedule = async function (req, res) {
             if (date.getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime()) {
                 throw("时间参数错误")
             } else {
-                const a = await db.query('select * from schedule where peoid=? and (startime >= ? AND startime <= ?) OR  (startime <= ? AND closetime >= ?) OR  (closetime >= ? AND closetime <= ?) ', [req.peoid,new Date(startime), new Date(closetime), new Date(startime), new Date(closetime),new Date(startime), new Date(closetime)])
+                const a = await db.query('select * from schedule where peoid=? and (startime > ? AND startime < ?) OR  (startime <= ? AND closetime >= ?) OR  (closetime > ? AND closetime < ?) ', [req.peoid,new Date(startime), new Date(closetime), new Date(startime), new Date(closetime),new Date(startime), new Date(closetime)])
                 if (a.length > 0) {
                     throw ("时间已分配")
                 }else{
@@ -41,7 +41,7 @@ exports.addSchedule = async function (req, res) {
                         await db.query('insert into news (schid,forid,whoid,type) values ?', [a])
                         //推送
                         for (let i = 0; i < result.length; i++) {
-                            GeTui.tuiSong("通知", `${req.peopleName}发表了${content}`, "测试", result[i].clientid)
+                            GeTui.tuiSong("通知", `${req.peopleName}发表了${content}`, {type:1,day:sd.format(new Date(startime),'YYYY-MM-DD')}, result[i].clientid)
                         }
                         writeJson(res, 0, '添加成功')
                     } else {
@@ -251,7 +251,7 @@ exports.UpdateScheduleShare = async function (req, res) {
         if (!schid || !content || !startime || !closetime || !peoid) {
             throw("参数错误")
         } else {
-            if (new Date(addtime).getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime() || new Date(addtime).getDate() > new Date(startime).getDate()) {
+            if (new Date(addtime).getTime() > new Date(startime).getTime() || new Date(startime).getTime() > new Date(closetime).getTime()) {
                 throw("时间参数错误")
             } else {
                 const nums = await db.query('select count(1) as num from relation where whoid=? and forid=?', [peoid, req.peoid])
@@ -264,7 +264,7 @@ exports.UpdateScheduleShare = async function (req, res) {
                         await db.query('insert into news (schid,whoid,forid,type) values (?,?,?,?)', [schid, req.peoid, peoid, 0])
                         //推送
                         const result = await db.query('select clientid from people where id=?', [peoid])
-                        GeTui.tuiSong("通知", `${req.peopleName}修改了你的日程${content}`, "测试", result[0].clientid)
+                        GeTui.tuiSong("通知", `${req.peopleName}修改了你的日程${content}`, {type:0,day:startime}, result[0].clientid)
                         writeJson(res, 0, '修改成功')
                     } else {
                         throw("消息id和人员不匹配")
