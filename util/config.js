@@ -1,6 +1,6 @@
 var CONFIG = {
-    host: '127.0.0.1',
-    // host:'60.205.212.103',
+    // host: '127.0.0.1',
+    host:'60.205.212.103',
     user: 'root',
     password: 'admin',
     database: 'time_management',

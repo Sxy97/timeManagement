@@ -60,11 +60,11 @@ exports.CompanyList = async function (req, res) {
     }
 }
 
-exports.Company_projectList = async function (req, res) {
-    try {
-
-    } catch (err) {
-        console.log(err)
-        writeJson(res, 1, err)
-    }
-}
+// exports.Company_projectList = async function (req, res) {
+//     try {
+//
+//     } catch (err) {
+//         console.log(err)
+//         writeJson(res, 1, err)
+//     }
+// }
